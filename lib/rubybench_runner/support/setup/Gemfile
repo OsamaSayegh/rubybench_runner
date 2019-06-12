@@ -1,0 +1,11 @@
+source "https://rubygems.org"
+
+group :postgres do
+  gem "pg"
+end
+
+group :mysql do
+  gem "mysql2"
+end
+
+gem "activerecord"

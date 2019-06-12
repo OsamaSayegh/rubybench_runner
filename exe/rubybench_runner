@@ -1,0 +1,97 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+$:.unshift File.expand_path('../lib', __dir__)
+
+require 'rubybench_runner'
+
+require 'optparse'
+
+command = ARGV[0]
+
+options = {}
+OptionParser.new do |opts|
+  opts.banner = <<~BANNER
+    Usage: rubybench_runner [command] [args] [options]
+
+    commands:
+      * run <repo_name> <script_url> <local_path> [options]
+        <repo_name> is one the repos that are benchmarked on rubybench.org. Valid options are: `rails`
+        <script_url> is a direct link to the benchmark you want to run.
+        <local_path> is a path to your local clone of repo_name (e.g. ~/rails)
+
+      * help
+        Show help
+
+    Available options:
+  BANNER
+  opts.on("--db=DB", "Select database to use for the benchmarks. Valud options are: `postgres` and `mysql`") do |v|
+    v = v.strip.downcase
+    pg_options = %w{pg postgres postgresql}
+    mysql_options = %w{mysql mysql2}
+    if pg_options.include?(v)
+      options[:db] = "postgres"
+    elsif mysql_options.include?(v)
+      options[:db] = "mysql2"
+    else
+      puts <<~OUTPUT
+        Invalid --db value \"#{v}\". Valid options are: (case insensitive)
+          #{pg_options.first} (aliases: #{pg_options[1..-1].join(", ")})
+          #{mysql_options.first} (aliases: #{mysql_options[1..-1].join(", ")})
+      OUTPUT
+      exit 1
+    end
+  end
+
+  opts.on("-c", "--repeat-count=COUNT", Integer, "Number of times to run the benchmark (default 2)") do |c|
+    options[:repeat_count] = c
+  end
+
+  opts.on("--skip-dep-check", "Skip dependency checks performed before the benchmarks are run") do
+    options[:skip_dependencies_check] = true
+  end
+
+  opts.on("-r", "--round=ROUND", Integer, "Round results to the nearest value with a precision of N digits (default 2)") do |r|
+    options[:round] = r
+  end
+
+  opts.on("--quiet", "Be quite when the the benchmarks are being run") do
+    options[:quiet] = true
+  end
+
+  opts.on("--fresh", "Remove installed gems from previous runs and reinstall them for this run") do
+    options[:fresh_run] = true
+  end
+
+  opts.on("--cleanup", "Remove gems installed during this run after the run is complete") do
+    options[:cleanup] = true
+  end
+
+  opts.on("-wps", "--with-prepared-statements", "Run benchmarks with prepared statements") do
+    options[:wps] = true
+  end
+
+  opts.on("-v", "--version", "Display installed version of RubybenchRunner") do
+    puts RubybenchRunner::VERSION
+    exit 0
+  end
+
+  opts.on("-h", "--help", "Show help") do
+    puts opts
+    exit 0
+  end
+end.parse!
+
+if command == "run"
+  repo_name = ARGV[1]
+  script_url = ARGV[2]
+  repo_path = File.expand_path(ARGV[3])
+  RubybenchRunner.run(repo_name, script_url, repo_path, options)
+elsif command == "help"
+  puts opts
+else
+  puts "Unknown command #{command}"
+  exit 1
+end
+
+# "https://github.com/ruby-bench/ruby-bench-suite/blob/master/rails/benchmarks/bm_activerecord_destroy.rb"

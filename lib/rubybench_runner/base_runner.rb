@@ -113,6 +113,7 @@ module RubybenchRunner
 
     def check_dependencies
       return if opts.skip_dependencies_check
+      log("Checking dependencies...")
       pg = opts.db == "postgres"
       mysql2 = opts.db == "mysql2"
       RubybenchRunner::DependenciesChecker.check(pg: require_db? && pg, mysql2: require_db? && mysql2)
@@ -183,10 +184,10 @@ module RubybenchRunner
 
       log("Installing gems...")
       Dir.chdir(File.dirname(gemfile_location)) do
-        system("bundle install")
+        system("bundle install > /dev/null")
       end
       Dir.chdir(File.join(dest_dir, "support", "setup")) do
-        system("bundle install")
+        system("bundle install > /dev/null")
       end
     end
 
@@ -218,7 +219,7 @@ module RubybenchRunner
 
     def cleanup(before: false, after: false)
       FileUtils.rm_f(script_full_path)
-      FileUtils.rm_rf(tmp_dir) if (opts.fresh_run && before) || (opts.cleanup && after)
+      FileUtils.rm_rf(dest_dir) if (opts.fresh_run && before) || (opts.cleanup && after)
     end
 
     def normalize_url(url)

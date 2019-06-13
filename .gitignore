@@ -5,6 +5,4 @@
 /doc/
 /pkg/
 /spec/reports/
-**/tmp/*
-**/support/setup/vendor/*
 .byebug_history

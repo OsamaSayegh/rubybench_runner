@@ -5,9 +5,9 @@ module RubybenchRunner
 
   class MissingDependency < StandardError; end
   class DependenciesChecker
-    def self.check(pg:, mysql2:)
-      check_pg if pg
-      check_mysql if mysql2
+    def self.check
+      check_pg
+      check_mysql
     end
 
     def self.check_pg

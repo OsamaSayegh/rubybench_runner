@@ -114,9 +114,7 @@ module RubybenchRunner
     def check_dependencies
       return if opts.skip_dependencies_check
       log("Checking dependencies...")
-      pg = opts.db == "postgres"
-      mysql2 = opts.db == "mysql2"
-      RubybenchRunner::DependenciesChecker.check(pg: require_db? && pg, mysql2: require_db? && mysql2)
+      RubybenchRunner::DependenciesChecker.check
     end
 
     def setup_db
@@ -183,11 +181,13 @@ module RubybenchRunner
       return if without_bundle?
 
       log("Installing gems...")
+      comm = "bundle install"
+      comm += " > /dev/null 2>&1" if !opts.verbose
       Dir.chdir(File.dirname(gemfile_location)) do
-        system("bundle install > /dev/null")
+        system(comm)
       end
       Dir.chdir(File.join(dest_dir, "support", "setup")) do
-        system("bundle install > /dev/null")
+        system(comm)
       end
     end
 

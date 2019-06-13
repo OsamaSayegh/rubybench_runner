@@ -59,6 +59,10 @@ OptionParser.new do |opts|
     options[:quiet] = true
   end
 
+  opts.on("--verbose", "Show extra informative output while the benchmarks are running") do
+    options[:verbose] = true
+  end
+
   opts.on("--fresh", "Remove installed gems from previous runs and reinstall them for this run") do
     options[:fresh_run] = true
   end

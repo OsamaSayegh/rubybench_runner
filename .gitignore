@@ -6,3 +6,4 @@
 /pkg/
 /spec/reports/
 .byebug_history
+*.gem

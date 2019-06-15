@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.name          = 'rubybench_runner'
   spec.version       = RubybenchRunner::VERSION
 
-  spec.summary       = 'Gem to run rubybench.org benchmarks locally'
+  spec.summary       = 'CLI tool to run rubybench.org benchmarks locally'
   spec.homepage      = 'https://github.com/ruby-bench/rubybench_runner'
   spec.license       = 'MIT'
   spec.authors       = ['Osama Sayegh']
@@ -22,10 +22,6 @@ Gem::Specification.new do |spec|
   spec.bindir        = 'exe'
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ['lib']
-
-  spec.add_development_dependency 'bundler', '~> 2.0'
-  spec.add_development_dependency 'pg', '1.1.4'
-  spec.add_development_dependency 'mysql2', '0.5.2'
 
   spec.add_development_dependency 'byebug'
   spec.add_development_dependency 'minitest', '~> 5.0'

@@ -14,51 +14,12 @@ module RubybenchRunner
       config = OpenStruct.new(raw_config[opts.db.to_sym])
       url = "#{opts.db}://#{config.user}"
       url += ":#{config.password}" if config.password
-      url += "@"
-      if config.host && config.port
-        url += "#{config.host}:#{config.port}"
-      end
+      url += "@#{config.host}" if config.host
+      url += ":#{config.port}" if config.port
       url += "/#{config.dbname}"
       with_prep_statement = opts.wps == true
       url += "?prepared_statements=#{with_prep_statement}"
       @db_url = url
-    end
-
-    def setup_db
-      return if !require_db?
-      log("Checking database...")
-      config = RubybenchRunner::Configurations.new(mysql_map: true)
-      if opts.db == "postgres"
-        require 'pg'
-        conn_config = config["postgres"]
-        rubybench_db = conn_config[:dbname]
-        conn_config[:dbname] = "postgres"
-        conn = PG.connect(conn_config)
-        begin
-          res = conn.exec("SELECT 1 FROM pg_database WHERE datname = '#{rubybench_db}'")
-          if !res.first
-            conn.exec("CREATE DATABASE #{rubybench_db}")
-            log("Created PostgreSQL database with the name '#{rubybench_db}'")
-          end
-        ensure
-          conn.close
-        end
-      elsif opts.db == "mysql2"
-        require 'mysql2'
-        conn_config = config["mysql2"]
-        rubybench_db = conn_config[:database]
-        conn_config[:database] = "mysql"
-        client = Mysql2::Client.new(conn_config)
-        begin
-          res = client.query("SHOW DATABASES LIKE '#{rubybench_db}'")
-          if !res.first
-            client.query("CREATE DATABASE #{rubybench_db}")
-            log("Created MySQL database with the name '#{rubybench_db}'")
-          end
-        ensure
-          client.close
-        end
-      end
     end
 
     def benchmark_name
@@ -85,7 +46,12 @@ module RubybenchRunner
 
     def require_db?
       filename = @script_url.split("/")[-1]
-      filename.match?(/activerecord|scaffold/)
+      res = filename.match?(/activerecord|scaffold/)
+      if res && !opts.db
+        puts "This benchmark requires database to run. Please specify the `--db` option (see --help for details)"
+        exit 1
+      end
+      res
     end
   end
 end

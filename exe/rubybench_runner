@@ -25,7 +25,7 @@ OptionParser.new do |opts|
 
     Available options:
   BANNER
-  opts.on("--db=DB", "Select database to use for the benchmarks. Valud options are: `postgres` and `mysql`") do |v|
+  opts.on("--db=DB", "Select database to use for the benchmarks. Valid options are: `postgres` and `mysql`") do |v|
     v = v.strip.downcase
     pg_options = %w{pg postgres postgresql}
     mysql_options = %w{mysql mysql2}

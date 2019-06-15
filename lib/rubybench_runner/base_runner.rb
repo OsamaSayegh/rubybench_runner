@@ -40,10 +40,10 @@ module RubybenchRunner
       create_tmpdir
       cleanup(before: true)
       check_dependencies
-      download_script
       write_gemfile
       bundle_install
       setup_db
+      download_script
       run_benchmarks
       process_results
       print_results
@@ -112,12 +112,52 @@ module RubybenchRunner
     end
 
     def check_dependencies
-      return if opts.skip_dependencies_check
+      return if opts.skip_dependencies_check || !require_db?
+
+      if opts.db == "postgres"
+        require_gem 'pg'
+      elsif opts.db == "mysql2"
+        require_gem 'mysql2'
+      end
+
       log("Checking dependencies...")
-      RubybenchRunner::DependenciesChecker.check
+      RubybenchRunner::DependenciesChecker.check(pg: opts.db == "postgres", mysql: opts.db == "mysql2")
     end
 
     def setup_db
+      return if !require_db?
+
+      log("Checking database...")
+      config = RubybenchRunner::Configurations.new(mysql_map: true)
+      if opts.db == "postgres"
+        conn_config = config["postgres"]
+        rubybench_db = conn_config[:dbname]
+        conn_config[:dbname] = "postgres"
+        conn = PG.connect(conn_config)
+        begin
+          res = conn.exec("SELECT 1 FROM pg_database WHERE datname = '#{rubybench_db}'")
+          if !res.first
+            conn.exec("CREATE DATABASE #{rubybench_db}")
+            log("Created PostgreSQL database with the name '#{rubybench_db}'")
+          end
+        ensure
+          conn.close
+        end
+      elsif opts.db == "mysql2"
+        conn_config = config["mysql2"]
+        rubybench_db = conn_config[:database]
+        conn_config[:database] = "mysql"
+        client = Mysql2::Client.new(conn_config)
+        begin
+          res = client.query("SHOW DATABASES LIKE '#{rubybench_db}'")
+          if !res.first
+            client.query("CREATE DATABASE #{rubybench_db}")
+            log("Created MySQL database with the name '#{rubybench_db}'")
+          end
+        ensure
+          client.close
+        end
+      end
     end
 
     def run_benchmarks
@@ -224,10 +264,40 @@ module RubybenchRunner
 
     def normalize_url(url)
       if url =~ /^(https?:\/\/github.com)/
-        url.sub($1, "https://raw.githubusercontent.com").sub("/blob", "")
+        url.sub($1, "https://raw.githubusercontent.com").sub("/blob/", "/")
       else
         url
       end
+    end
+
+    # small hack for dynamically installing/requiring gems.
+    # some benchmarks don't require db at all
+    # so having mysql2 and pg in the gemspec file means
+    # everyone must have postgres and mysql installed on
+    # their machine in order to use this gem.
+    # this hack allows us to not require mysql/postgres
+    # until the user tries to run a benchmark that needs db.
+    # --
+    # source https://stackoverflow.com/a/36570445
+
+    def require_gem(gem_name)
+      require 'rubygems/commands/install_command'
+      Gem::Specification::find_by_name(gem_name)
+    rescue Gem::LoadError
+      log("Installing the '#{opts.db}' gem...")
+      install_gem(gem_name)
+    ensure
+      log("Using the '#{opts.db}' gem...")
+      require gem_name
+    end
+
+    def install_gem(gem_name)
+      cmd = Gem::Commands::InstallCommand.new
+      cmd.handle_options [gem_name]     
+
+      cmd.execute
+    rescue Gem::SystemExitException => e
+      puts "FAILURE: #{e.exit_code} -- #{e.message}" if e.exit_code != 0
     end
   end
 end

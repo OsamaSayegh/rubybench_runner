@@ -10,11 +10,9 @@ GEM
     byebug (11.0.1)
     jaro_winkler (1.5.2)
     minitest (5.11.3)
-    mysql2 (0.5.2)
     parallel (1.17.0)
     parser (2.6.3.0)
       ast (~> 2.4.0)
-    pg (1.1.4)
     rainbow (3.0.0)
     rake (10.5.0)
     rubocop (0.71.0)
@@ -31,11 +29,8 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  bundler (~> 2.0)
   byebug
   minitest (~> 5.0)
-  mysql2 (= 0.5.2)
-  pg (= 1.1.4)
   rake (~> 10.0)
   rubocop (~> 0.70)
   rubybench_runner!

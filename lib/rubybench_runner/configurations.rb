@@ -8,17 +8,17 @@ module RubybenchRunner
     }
     DEFAULTS = {
       postgres: {
-        user: "postgres",
+        user: nil,
         dbname: "rubybench",
-        host: "localhost",
-        port: 5432,
+        host: nil,
+        port: nil,
         password: nil
       },
       mysql2: {
-        user: "root",
+        user: nil,
         dbname: "rubybench",
-        host: "localhost",
-        port: 3306,
+        host: nil,
+        port: nil,
         password: nil
       },
       config_version: CONFIG_VERSION
@@ -27,11 +27,6 @@ module RubybenchRunner
       @mysql_map = mysql_map
       if !File.exists?(CONFIG_PATH)
         File.write(CONFIG_PATH, YAML.dump(DEFAULTS))
-      end
-
-      if !config_changed?
-        puts "Error: You haven't configured how RubybenchRunner should connect to the database servers on your machine. Please update the #{CONFIG_PATH} file to have the right configurations."
-        exit 1
       end
     end
 

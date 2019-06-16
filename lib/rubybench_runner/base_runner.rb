@@ -233,8 +233,11 @@ module RubybenchRunner
       Dir.chdir(File.dirname(gemfile_location)) do
         system(comm)
       end
-      Dir.chdir(File.join(dest_dir, "support", "setup")) do
-        system(comm)
+
+      if require_db?
+        Dir.chdir(File.join(dest_dir, "support", "setup")) do
+          system(comm)
+        end
       end
     end
 

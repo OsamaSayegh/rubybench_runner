@@ -32,8 +32,12 @@ module RubybenchRunner
 
         gem 'rails', path: '#{@repo_path}'
 
-        gem 'mysql2', '0.5.2'
-        gem 'pg', '1.1.4'
+        group :mysql do
+          gem 'mysql2', '0.5.2'
+        end
+        group :postgres do
+          gem 'pg', '1.1.4'
+        end
         gem 'benchmark-ips', '~> 2.7.2'
         gem 'redis', '~> 4.1.2'
         gem 'puma', '~> 3.12.1'

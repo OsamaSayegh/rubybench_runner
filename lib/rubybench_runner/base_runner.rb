@@ -222,6 +222,13 @@ module RubybenchRunner
 
       log("Installing gems...")
       comm = "bundle install"
+      if opts.db == "mysql2"
+        comm += " --without postgres"
+      elsif opts.db == "postgres"
+        comm += " --without mysql"
+      else
+        comm += " --without mysql postgres"
+      end
       comm += " > /dev/null 2>&1" if !opts.verbose
       Dir.chdir(File.dirname(gemfile_location)) do
         system(comm)

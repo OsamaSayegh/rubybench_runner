@@ -4,10 +4,18 @@
 $:.unshift File.expand_path('../lib', __dir__)
 
 require 'rubybench_runner'
-
 require 'optparse'
 
+RUN = "run"
+HELP = "help"
+
 command = ARGV[0]
+repo = ""
+script = ""
+
+if command == RUN
+  repo, script = ARGV[1].split("/", 2)
+end
 
 options = {}
 OptionParser.new do |opts|
@@ -15,12 +23,11 @@ OptionParser.new do |opts|
     Usage: rubybench_runner [command] [args] [options]
 
     commands:
-      * run <repo_name> <script_url> <local_path> [options]
+      * #{RUN} <repo_name>/<script_name> [options]
         <repo_name> is one the repos that are benchmarked on rubybench.org. Valid options are: `rails`
-        <script_url> is a direct link to the benchmark you want to run.
-        <local_path> is a path to your local clone of repo_name (e.g. ~/rails)
+        <script_name> is the name of the benchmark from rubybench.org e.g. bm_activerecord_finders_find_by_attributes.rb.
 
-      * help
+      * #{HELP}
         Show help
 
     Available options:
@@ -43,7 +50,7 @@ OptionParser.new do |opts|
     end
   end
 
-  opts.on("-c", "--repeat-count=COUNT", Integer, "Number of times to run the benchmark (default 2)") do |c|
+  opts.on("-c", "--repeat-count=COUNT", Integer, "Number of times to run the benchmark (default 1)") do |c|
     options[:repeat_count] = c
   end
 
@@ -71,7 +78,7 @@ OptionParser.new do |opts|
     options[:cleanup] = true
   end
 
-  opts.on("-wps", "--with-prepared-statements", "Run benchmarks with prepared statements") do
+  opts.on("--wps", "--with-prepared-statements", "Run benchmarks with prepared statements") do
     options[:wps] = true
   end
 
@@ -84,14 +91,23 @@ OptionParser.new do |opts|
     puts opts
     exit 0
   end
+
+  opts.on("--url=URL", "Direct link to a benchmark script") do |url|
+    options[:url] = url
+  end
+
+  RubybenchRunner::SUPPORTED_REPOS.each do |name, _|
+    if repo == name.to_s
+      opts.on("--#{name}=PATH", "Provide local path to #{name}") do |path|
+        options[name] = File.expand_path(path)
+      end
+    end
+  end
 end.parse!
 
-if command == "run"
-  repo_name = ARGV[1]
-  script_url = ARGV[2]
-  repo_path = File.expand_path(ARGV[3])
-  RubybenchRunner.run(repo_name, script_url, repo_path, options)
-elsif command == "help"
+if command == RUN
+  RubybenchRunner.run(repo, script, options)
+elsif command == HELP
   puts opts
 else
   puts "Unknown command #{command}"

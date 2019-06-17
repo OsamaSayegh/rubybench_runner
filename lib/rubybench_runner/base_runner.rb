@@ -1,11 +1,14 @@
 module RubybenchRunner
-  def self.run(repo, script_url, repo_path, opts = {})
-    if repo == "rails"
-      klass = RubybenchRunner::RailsRunner
-    else
-      raise "Unknown repo #{repo}"
+  class ShellError < StandardError; end
+
+  def self.run(repo, script, opts = {})
+    SUPPORTED_REPOS.each do |name, klass|
+      if repo == name.to_s
+        klass.new(script, opts).run
+        return
+      end
     end
-    klass.new(script_url, repo_path, opts).run
+    raise "Unknown repo #{repo}"
   end
 
   class BaseRunner
@@ -27,18 +30,19 @@ module RubybenchRunner
       round: 2
     }
 
-    def initialize(url, repo_path, opts = {})
-      @script_url = normalize_url(url)
-      @repo_path = repo_path
+    def initialize(script, opts = {})
+      @script_name = script
       @opts = OpenStruct.new(DEFAULT_OPTS.merge(opts))
+      @script_url = @opts.url || script_full_url(script)
       @results = []
       @error = nil
       @output = ""
     end
 
     def run
-      create_tmpdir
+      set_repo_path
       cleanup(before: true)
+      create_tmpdir
       check_dependencies
       write_gemfile
       bundle_install
@@ -49,6 +53,33 @@ module RubybenchRunner
       print_results
     ensure
       cleanup(after: true)
+    end
+
+    def possible_repo_path
+      File.join(Dir.home, benchmark_name.downcase)
+    end
+
+    def is_repo_path_valid?
+      true
+    end
+
+    def set_repo_path
+      name = benchmark_name.downcase
+      from_opts = false
+      if path = opts.send(name)
+        from_opts = true
+        @repo_path = path
+      else
+        @repo_path = possible_repo_path
+        log("Running #{name} benchmark #{@script_name}: #{name} path is #{possible_repo_path}\n")
+      end
+
+      unless is_repo_path_valid?
+        output = "Cannot find #{name} at #{@repo_path}."
+        output += "Perhaps try:\n\nrubybench_runner run #{name}/#{@script_name} --#{name}=/path/to/#{name}" unless from_opts
+        log(output, f: true)
+        exit 1
+      end
     end
 
     def dest_dir
@@ -161,12 +192,17 @@ module RubybenchRunner
     end
 
     def run_benchmarks
+      return if @error
       log("Running benchmarks...")
       Dir.chdir(script_path) do
         opts.repeat_count.times do |n|
-          res = `#{command}`
-          @results[n] = res
-          @results[n] = JSON.parse(res)
+          res, err = Open3.capture3(command)
+          if err.size == 0
+            @results[n] = res
+            @results[n] = JSON.parse(res)
+          else
+            raise ShellError.new(err)
+          end
         end
       end
     rescue => err
@@ -193,18 +229,21 @@ module RubybenchRunner
       if @error
         @output = <<~OUTPUT
           An error occurred while running the benchmarks:
-          Error: #{@error.message}
+          Error #{@error.class}: #{@error.message}
           Backtrace:
           #{@error.backtrace.join("\n")}
-          ------
-          Raw results until this error:
-          #{@results}
         OUTPUT
+        if @results.size > 0
+          @output += <<~OUTPUT
+            ------
+            Raw results until this error:
+            #{@results}
+          OUTPUT
+        end
       else
         label = @results.first['label']
         version = @results.first['version']
         @output = "#{benchmark_name} version #{version}\n"
-        @output += "Benchmark name: #{label}\n"
         @output += "Results (#{@results.size} runs):\n"
         @results.map!.with_index do |res, ind|
           res.delete('label')
@@ -245,6 +284,9 @@ module RubybenchRunner
       log("Downloading script...")
       content = open(script_url).read
       File.write(script_full_path, content)
+    rescue OpenURI::HTTPError => e
+      log("Script download failed #{script_url}", f: true)
+      @error = e
     end
 
     def write_gemfile
@@ -254,8 +296,8 @@ module RubybenchRunner
 
     private
 
-    def log(msg)
-      return if opts.quiet
+    def log(msg, f: false)
+      return if opts.quiet && !f
       puts msg
     end
 
@@ -272,12 +314,11 @@ module RubybenchRunner
       FileUtils.rm_rf(dest_dir) if (opts.fresh_run && before) || (opts.cleanup && after)
     end
 
-    def normalize_url(url)
-      if url =~ /^(https?:\/\/github.com)/
-        url.sub($1, "https://raw.githubusercontent.com").sub("/blob/", "/")
-      else
-        url
+    def script_full_url(script)
+      if script !~ /\.rb$/
+        script += ".rb"
       end
+      "https://raw.githubusercontent.com/ruby-bench/ruby-bench-suite/master/#{benchmark_name.downcase}/benchmarks/#{script}"
     end
 
     # small hack for dynamically installing/requiring gems.

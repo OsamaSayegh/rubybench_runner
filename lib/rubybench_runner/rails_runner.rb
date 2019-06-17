@@ -8,6 +8,10 @@ module RubybenchRunner
       command
     end
 
+    def is_repo_path_valid?
+      File.exists?(File.join(repo_path, "rails.gemspec"))
+    end
+
     def database_url
       return @db_url if @db_url
       raw_config = RubybenchRunner::Configurations.new
